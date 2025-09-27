@@ -1,4 +1,3 @@
-import readline from "readline/promises";
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import { Pinecone } from "@pinecone-database/pinecone";
@@ -44,42 +43,27 @@ const messages = [
   },
 ];
 
-export async function chat() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+export async function chat(userQuery) {
+  // Retrieval - get relevant context from Pinecone
+  const context = await retrieveContext(userQuery);
+
+  // Create messages with context for this specific query
+  const messagesWithContext = [
+    messages[0], // System message
+    {
+      role: "user",
+      content: `Context: ${context}\n\nQuestion: ${userQuery}`,
+    },
+  ];
+
+  const completion = await groq.chat.completions.create({
+    model: "openai/gpt-oss-20b",
+    messages: messagesWithContext,
   });
-
-  while (true) {
-    const userQuery = await rl.question("User: ");
-
-    if (userQuery === "/bye") {
-      break;
-    }
-
-    // Retrieval - get relevant context from Pinecone
-    const context = await retrieveContext(userQuery);
-
-    // Create messages with context for this specific query
-    const messagesWithContext = [
-      messages[0], // System message
-      {
-        role: "user",
-        content: `Context: ${context}\n\nQuestion: ${userQuery}`,
-      },
-    ];
-
-    const completion = await groq.chat.completions.create({
-      model: "openai/gpt-oss-20b",
-      messages: messagesWithContext,
-    });
-    console.log("Assistant: ", completion.choices[0]?.message?.content);
-    messages.push({
-      role: "assistant",
-      content: completion.choices[0]?.message?.content,
-    });
-  }
-  rl.close();
+  console.log("Assistant: ", completion.choices[0]?.message?.content);
+  messages.push({
+    role: "assistant",
+    content: completion.choices[0]?.message?.content,
+  });
+  return completion.choices[0]?.message?.content;
 }
-
-chat();
