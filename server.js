@@ -98,6 +98,58 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
+// List files in ImageKit folder /RAG for the UI
+app.get("/files", async (req, res) => {
+  try {
+    if (!IK_PRIVATE_KEY) {
+      return res
+        .status(500)
+        .json({ error: "ImageKit PRIVATE_KEY is not configured" });
+    }
+
+    const params = new URLSearchParams({
+      path: "/RAG",
+      limit: "100",
+      sort: "ASC_CREATED",
+    });
+
+    const auth =
+      "Basic " + Buffer.from(IK_PRIVATE_KEY + ":").toString("base64");
+    const resp = await fetch(
+      `https://api.imagekit.io/v1/files?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: auth,
+        },
+      }
+    );
+
+    const data = await resp.json();
+    if (!resp.ok) {
+      return res
+        .status(resp.status)
+        .json({ error: data?.message || "List files failed", details: data });
+    }
+
+    // Normalize for UI
+    const files = (Array.isArray(data) ? data : []).map((f) => ({
+      id: f.fileId,
+      name: f.name,
+      size: f.size,
+      uploadDate: f.createdAt,
+      url: f.url,
+      thumbnail: f.thumbnailUrl,
+      fileType: f.fileType,
+    }));
+
+    return res.json({ files });
+  } catch (err) {
+    console.error("/files error", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
