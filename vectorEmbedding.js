@@ -1,41 +1,48 @@
-import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import fs from "fs";
-import path from "path";
 import createEmbedding from "./embed.js";
+import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf";
 
-const folderPath = "./companyDocs";
-
-function getAllFilesInFolder(folderPath) {
-  return fs.readdirSync(folderPath);
-}
-
-export async function indexTheDocument() {
-  const filesName = getAllFilesInFolder(folderPath);
+export async function indexTheDocument(filesUrl) {
   let finalContent = "";
 
-  // 1. Load the document - pdf, text
-  // Loop through all files and load them and then returning whole content in single string
-  for (let i = 0; i < filesName.length; i++) {
-    const filePath = path.join(folderPath, filesName[i]);
-    const loader = new PDFLoader(filePath, { splitPages: false });
-    const doc = await loader.load();
-    finalContent += doc[0].pageContent + "\n";
+  // Load and extract text from each remote PDF URL
+  for (let i = 0; i < filesUrl.length; i++) {
+    const url = filesUrl[i];
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        console.error(`Failed to fetch PDF: ${url} status=${resp.status}`);
+        continue;
+      }
+      const arrayBuffer = await resp.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+
+      const loader = new WebPDFLoader(blob, { splitPages: false });
+      const docs = await loader.load();
+      if (Array.isArray(docs) && docs.length) {
+        // Concatenate text from all returned docs/pages
+        console.log("docs", docs[0].pageContent);
+        finalContent += docs.map((d) => d.pageContent || "").join("\n") + "\n";
+      }
+    } catch (err) {
+      console.error(`Error loading PDF from URL: ${url}`, err);
+    }
   }
 
-  // 2. Chunk the document
-  const textSplitter = new RecursiveCharacterTextSplitter({
-    // Represents the size of each chunk of text in characters.
-    // Chunks will be split into blocks of this size before being processed.
-    chunkSize: 500, // Maximum text chunk size in characters.
-    chunkOverlap: 100, // Number of characters to overlap between chunks.
+  // If no text was extracted, skip embedding to avoid empty-batch errors
+  if (!finalContent.trim()) {
+    console.warn("No text extracted from PDFs; skipping embedding.");
+    return [];
+  }
 
-    // Note :- 100 and 500 are best metrics.
+  // Chunk the aggregated text
+  const textSplitter = new RecursiveCharacterTextSplitter({
+    chunkSize: 500,
+    chunkOverlap: 100,
   });
   const texts = await textSplitter.splitText(finalContent);
 
-  // 3. Generate vector embeddings and store in Pinecone
+  // Generate vector embeddings and store in Pinecone (via createEmbedding)
   const embeddings = await createEmbedding(texts);
-
   return embeddings;
 }
