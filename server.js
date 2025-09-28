@@ -150,6 +150,53 @@ app.get("/files", async (req, res) => {
   }
 });
 
+// Delete a file in ImageKit by fileId
+app.delete("/files/:id", async (req, res) => {
+  try {
+    if (!IK_PRIVATE_KEY) {
+      return res
+        .status(500)
+        .json({ error: "ImageKit PRIVATE_KEY is not configured" });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: "Missing file id" });
+    }
+
+    const auth =
+      "Basic " + Buffer.from(IK_PRIVATE_KEY + ":").toString("base64");
+    const resp = await fetch(`https://api.imagekit.io/v1/files/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: auth,
+      },
+    });
+
+    if (resp.status === 204) {
+      return res.status(204).send();
+    }
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return res
+        .status(resp.status)
+        .json({ error: data?.message || "Delete failed", details: data });
+    }
+    return res.json(data);
+  } catch (err) {
+    console.error("DELETE /files/:id error", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Used to create vector embeddings
+app.post("/createVectorEmbeddings", (req, res) => {
+  try {
+  } catch (err) {
+    console.error("/createVectorEmbeddings error", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
