@@ -50,6 +50,8 @@ async function createEmbedding(document) {
       },
     }));
 
+    await index.namespace("__default__").deleteAll();
+
     // Upload to Pinecone in batches of 100 (Pinecone recommendation)
     const batchSize = 100;
     for (let i = 0; i < vectors.length; i += batchSize) {

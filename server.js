@@ -207,7 +207,7 @@ app.post("/createVectorEmbeddings", async (req, res) => {
       : [];
 
     const embeddings = await indexTheDocument(filesUrl);
-    return res.json({ filesUrl });
+    return res.send("Context created successfully");
   } catch (err) {
     console.error("/createVectorEmbeddings error", err);
     return res.status(500).json({ error: "Internal Server Error" });
