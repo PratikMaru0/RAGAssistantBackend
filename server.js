@@ -4,8 +4,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import crypto from "node:crypto";
 import multer from "multer";
-import axios from "axios";
 import { indexTheDocument } from "./vectorEmbedding.js";
+import { Pinecone } from "@pinecone-database/pinecone";
 
 dotenv.config();
 
@@ -153,6 +153,52 @@ app.get("/files", async (req, res) => {
   }
 });
 
+app.delete("/deleteContext", async (req, res) => {
+  try {
+    // Initialize Pinecone client
+    const pinecone = new Pinecone({
+      apiKey: process.env.PINECONE_API_KEY,
+    });
+
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME);
+    const namespaceList = await index.listNamespaces();
+
+    if (namespaceList.namespaces.length === 0) {
+      return res.send("No context found");
+    }
+    await index.namespace("__default__").deleteAll();
+    return res.send("Context deleted successfully");
+  } catch (err) {
+    console.error("/deleteContext error", err);
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", message: err });
+  }
+});
+
+// Used to create vector embeddings
+app.post("/createVectorEmbeddings", async (req, res) => {
+  try {
+    const resp = await fetch("http://localhost:3000/files");
+    const data = await resp.json();
+    if (!resp.ok) {
+      return res
+        .status(resp.status)
+        .json({ error: data?.error || "Failed to fetch files" });
+    }
+
+    const filesUrl = Array.isArray(data?.files)
+      ? data.files.map((file) => file.url)
+      : [];
+
+    const embeddings = await indexTheDocument(filesUrl);
+    return res.send("Context created successfully");
+  } catch (err) {
+    console.error("/createVectorEmbeddings error", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // Delete a file in ImageKit by fileId
 app.delete("/files/:id", async (req, res) => {
   try {
@@ -187,29 +233,6 @@ app.delete("/files/:id", async (req, res) => {
     return res.json(data);
   } catch (err) {
     console.error("DELETE /files/:id error", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-// Used to create vector embeddings
-app.post("/createVectorEmbeddings", async (req, res) => {
-  try {
-    const resp = await fetch("http://localhost:3000/files");
-    const data = await resp.json();
-    if (!resp.ok) {
-      return res
-        .status(resp.status)
-        .json({ error: data?.error || "Failed to fetch files" });
-    }
-
-    const filesUrl = Array.isArray(data?.files)
-      ? data.files.map((file) => file.url)
-      : [];
-
-    const embeddings = await indexTheDocument(filesUrl);
-    return res.send("Context created successfully");
-  } catch (err) {
-    console.error("/createVectorEmbeddings error", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });

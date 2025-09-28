@@ -7,7 +7,6 @@ dotenv.config();
 // Initialize the GoogleGenerativeAI client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_EMBEDDING_API_KEY);
 
-// Initialize Pinecone client
 const pinecone = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY,
 });
@@ -49,8 +48,6 @@ async function createEmbedding(document) {
         chunkIndex: i,
       },
     }));
-
-    await index.namespace("__default__").deleteAll();
 
     // Upload to Pinecone in batches of 100 (Pinecone recommendation)
     const batchSize = 100;

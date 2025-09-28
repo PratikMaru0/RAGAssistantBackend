@@ -20,8 +20,6 @@ export async function indexTheDocument(filesUrl) {
       const loader = new WebPDFLoader(blob, { splitPages: false });
       const docs = await loader.load();
       if (Array.isArray(docs) && docs.length) {
-        // Concatenate text from all returned docs/pages
-        console.log("docs", docs[0].pageContent);
         finalContent += docs.map((d) => d.pageContent || "").join("\n") + "\n";
       }
     } catch (err) {
