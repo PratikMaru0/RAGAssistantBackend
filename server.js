@@ -179,7 +179,8 @@ app.delete("/deleteContext", async (req, res) => {
 // Used to create vector embeddings
 app.post("/createVectorEmbeddings", async (req, res) => {
   try {
-    const resp = await fetch("http://localhost:3000/files");
+    console.log("Calling....");
+    const resp = await fetch("https://rag-assistant-backend.vercel.app/files");
     const data = await resp.json();
     if (!resp.ok) {
       return res
