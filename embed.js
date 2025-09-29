@@ -36,8 +36,6 @@ async function createEmbedding(document) {
       (embedding) => embedding.values
     );
 
-    console.log("Total embeddings created:", finalVectorEmbeddings.length);
-
     // 4. Store embeddings in Pinecone
     console.log("Storing embeddings in Pinecone...");
     const vectors = finalVectorEmbeddings.map((embedding, i) => ({
@@ -54,14 +52,7 @@ async function createEmbedding(document) {
     for (let i = 0; i < vectors.length; i += batchSize) {
       const batch = vectors.slice(i, i + batchSize);
       await index.upsert(batch);
-      console.log(
-        `Uploaded batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(
-          vectors.length / batchSize
-        )}`
-      );
     }
-
-    console.log("All embeddings stored successfully in Pinecone!");
     return finalVectorEmbeddings;
   } catch (error) {
     console.error("An error occurred during batch embedding:", error);

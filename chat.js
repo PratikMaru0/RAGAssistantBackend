@@ -60,7 +60,6 @@ export async function chat(userQuery) {
     model: "openai/gpt-oss-20b",
     messages: messagesWithContext,
   });
-  console.log("Assistant: ", completion.choices[0]?.message?.content);
   messages.push({
     role: "assistant",
     content: completion.choices[0]?.message?.content,
